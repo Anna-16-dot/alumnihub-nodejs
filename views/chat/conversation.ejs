@@ -1,0 +1,261 @@
+<div class="container-fluid p-0">
+<div class="chat-container">
+    <div class="chat-header-fixed">
+        <a href="/chat" class="btn btn-link text-dark p-0">
+            <i class="bi bi-arrow-left fs-5"></i>
+        </a>
+        <div class="chat-user-info">
+            <% if (otherUser.profile_picture) { %>
+                <img src="/<%= otherUser.profile_picture %>" alt="<%= otherUser.name %>" class="chat-header-avatar">
+            <% } else { %>
+                <div class="chat-header-avatar-placeholder"><%= otherUser.name.charAt(0).toUpperCase() %></div>
+            <% } %>
+            <div>
+                <strong><%= otherUser.name %></strong>
+                <small class="text-muted d-block"><%= otherUser.email %></small>
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+        <% if (messages && messages.length > 0) { %>
+            <% messages.forEach(msg => { %>
+                <div class="message <%= msg.sender_id === user.id ? 'message-sent' : 'message-received' %>" data-message-id="<%= msg.id %>">
+                    <% if (msg.sender_id !== user.id) { %>
+                        <div class="message-avatar">
+                            <% if (msg.sender_picture) { %>
+                                <img src="/<%= msg.sender_picture %>" alt="<%= msg.sender_name %>">
+                            <% } else { %>
+                                <div class="avatar-placeholder-sm"><%= msg.sender_name.charAt(0).toUpperCase() %></div>
+                            <% } %>
+                        </div>
+                    <% } %>
+                    <div class="message-content">
+                        <div class="message-bubble">
+                            <%= msg.message %>
+                        </div>
+                        <small class="message-time">
+                            <%= helpers.timeAgo(msg.created_at) %>
+                            <% if (msg.sender_id === user.id) { %>
+                                <i class="bi bi-check-all <%= msg.is_read ? 'text-primary' : 'text-muted' %>" title="<%= msg.is_read ? 'Read' : 'Delivered' %>"></i>
+                            <% } %>
+                        </small>
+                    </div>
+                </div>
+            <% }); %>
+        <% } else { %>
+            <div class="empty-chat-state">
+                <i class="bi bi-chat-dots"></i>
+                <p>No messages yet. Start the conversation!</p>
+            </div>
+        <% } %>
+        <div id="typingIndicator" class="typing-indicator" style="display: none;">
+            <div class="message message-received">
+                <div class="message-avatar">
+                    <% if (otherUser.profile_picture) { %>
+                        <img src="/<%= otherUser.profile_picture %>" alt="<%= otherUser.name %>">
+                    <% } else { %>
+                        <div class="avatar-placeholder-sm"><%= otherUser.name.charAt(0).toUpperCase() %></div>
+                    <% } %>
+                </div>
+                <div class="message-content">
+                    <div class="message-bubble typing-bubble">
+                        <span class="typing-dot"></span>
+                        <span class="typing-dot"></span>
+                        <span class="typing-dot"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-input-fixed">
+        <form id="messageForm" onsubmit="sendMessage(event)">
+            <textarea 
+                id="messageInput" 
+                class="form-control" 
+                placeholder="Type a message..." 
+                rows="1"
+                onkeydown="handleKeyPress(event)"
+            ></textarea>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+const otherUserId = <%= otherUser.id %>;
+const currentUserId = <%= user.id %>;
+
+// Auto-scroll to bottom on load
+window.addEventListener('load', () => {
+    scrollToBottom();
+});
+
+function scrollToBottom() {
+    const chatMessages = document.getElementById('chatMessages');
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function handleKeyPress(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage(event);
+    }
+}
+
+function sendMessage(event) {
+    event.preventDefault();
+    
+    const messageInput = document.getElementById('messageInput');
+    const message = messageInput.value.trim();
+    
+    if (!message) {
+        console.log('Empty message, not sending');
+        return;
+    }
+    
+    console.log('Sending message:', message, 'to user:', otherUserId);
+    
+    fetch('/api/send-message', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ 
+            receiver_id: parseInt(otherUserId), 
+            message: message 
+        })
+    })
+    .then(res => {
+        console.log('Response status:', res.status);
+        return res.json();
+    })
+    .then(data => {
+        console.log('Response data:', data);
+        if (data.success) {
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            appendMessage(data.data, true);
+            scrollToBottom();
+        } else {
+            console.error('Send failed:', data.message);
+            alert(data.message || 'Failed to send message');
+        }
+    })
+    .catch(error => {
+        console.error('Fetch error:', error);
+        alert('An error occurred: ' + error.message);
+    });
+    
+    return false;
+}
+
+function appendMessage(msg, isSent) {
+    const chatMessages = document.getElementById('chatMessages');
+    
+    // Check if message already exists
+    const existingMsg = chatMessages.querySelector(\`[data-message-id="\${msg.id}"]\`);
+    if (existingMsg) {
+        return; // Message already displayed
+    }
+    
+    // Remove empty state if exists
+    const emptyState = chatMessages.querySelector('.empty-chat-state');
+    if (emptyState) {
+        emptyState.remove();
+    }
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message ' + (isSent ? 'message-sent' : 'message-received');
+    messageDiv.setAttribute('data-message-id', msg.id);
+    
+    let avatarHTML = '';
+    if (!isSent) {
+        if (msg.sender_picture) {
+            avatarHTML = \`<div class="message-avatar"><img src="/\${msg.sender_picture}" alt="\${msg.sender_name}"></div>\`;
+        } else {
+            avatarHTML = \`<div class="message-avatar"><div class="avatar-placeholder-sm">\${msg.sender_name.charAt(0).toUpperCase()}</div></div>\`;
+        }
+    }
+    
+    const readStatus = isSent ? \`<i class="bi bi-check-all text-muted" title="Delivered"></i>\` : '';
+    
+    messageDiv.innerHTML = \`
+        \${avatarHTML}
+        <div class="message-content">
+            <div class="message-bubble">\${escapeHtml(msg.message)}</div>
+            <small class="message-time">just now \${readStatus}</small>
+        </div>
+    \`;
+    
+    // Insert before typing indicator
+    const typingIndicator = document.getElementById('typingIndicator');
+    chatMessages.insertBefore(messageDiv, typingIndicator);
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Track existing message IDs to prevent duplicates
+let messageIds = new Set([
+    <% if (messages && messages.length > 0) { %>
+        <%= messages.map(m => m.id).join(',') %>
+    <% } %>
+]);
+
+// Poll for new messages every 2 seconds for better sync
+setInterval(() => {
+    loadNewMessages();
+}, 2000);
+
+function loadNewMessages() {
+    fetch(\`/api/get-messages/\${otherUserId}\`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                updateMessages(data.messages);
+            }
+        })
+        .catch(error => console.error('Error loading messages:', error));
+}
+
+function updateMessages(messages) {
+    let hasNewMessages = false;
+    
+    messages.forEach(msg => {
+        if (!messageIds.has(msg.id)) {
+            appendMessage(msg, msg.sender_id === currentUserId);
+            messageIds.add(msg.id);
+            hasNewMessages = true;
+        }
+    });
+    
+    if (hasNewMessages) {
+        scrollToBottom();
+    }
+}
+
+// Typing indicator logic
+let typingTimeout;
+const messageInput = document.getElementById('messageInput');
+
+messageInput.addEventListener('input', () => {
+    // Could implement typing indicator to server here
+    clearTimeout(typingTimeout);
+    
+    typingTimeout = setTimeout(() => {
+        // User stopped typing
+    }, 1000);
+});
+</script>
+
+</div>
+<%- include('../partials/bottom-nav') %>

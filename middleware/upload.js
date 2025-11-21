@@ -8,25 +8,26 @@ const path = require('path');
 const fs = require('fs');
 const { sanitizeFilename, isAllowedFileType } = require('../utils/helpers');
 
-// Ensure upload directories exist
+// Ensure upload directories exist (cross-platform)
 const ensureDirectoryExists = (dir) => {
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
     }
 };
 
-ensureDirectoryExists(path.join(__dirname, '../uploads/profiles'));
-ensureDirectoryExists(path.join(__dirname, '../uploads/posts'));
+// Use path.resolve for absolute cross-platform paths
+ensureDirectoryExists(path.resolve(__dirname, '..', 'uploads', 'profiles'));
+ensureDirectoryExists(path.resolve(__dirname, '..', 'uploads', 'posts'));
 
-// Storage configuration
+// Storage configuration (cross-platform)
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        let uploadPath = 'uploads/';
+        let uploadPath = 'uploads';
         
         if (file.fieldname === 'profile_picture') {
-            uploadPath += 'profiles/';
+            uploadPath = path.join('uploads', 'profiles');
         } else if (file.fieldname === 'post_image' || file.fieldname === 'image') {
-            uploadPath += 'posts/';
+            uploadPath = path.join('uploads', 'posts');
         }
         
         cb(null, uploadPath);

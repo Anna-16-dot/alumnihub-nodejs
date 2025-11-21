@@ -32,9 +32,16 @@
 
 ### Installation
 
+**For Windows users**: See [WINDOWS_SETUP.md](WINDOWS_SETUP.md) for detailed Windows-specific instructions.
+
 1. **Install Dependencies**
 ```bash
+# macOS/Linux
 cd /Applications/XAMPP/xamppfiles/htdocs/alumnihub-nodejs
+npm install
+
+# Windows (Command Prompt)
+cd C:\xampp\htdocs\alumnihub-nodejs
 npm install
 ```
 
@@ -310,6 +317,28 @@ This Node.js version uses the **same database** as the PHP version, so:
 - [ ] Advanced analytics
 - [ ] Mobile app API
 - [ ] Docker containerization
+
+## 💻 Cross-Platform Compatibility
+
+This application is **fully compatible** with:
+
+✅ **Windows** 10/11  
+✅ **macOS** (Intel & Apple Silicon)  
+✅ **Linux** (Ubuntu, Debian, CentOS, etc.)
+
+### Platform-Specific Features
+
+- **Windows**: Includes `.bat` scripts for easy setup (`generate-views.bat`, `deploy-to-render.bat`)
+- **macOS/Linux**: Includes shell scripts (`.sh` files)
+- **All Platforms**: NPM scripts work everywhere (`npm run dev`, `npm start`)
+
+### Windows Users
+
+See the dedicated **[WINDOWS_SETUP.md](WINDOWS_SETUP.md)** guide for:
+- Detailed Windows installation steps
+- XAMPP configuration on Windows
+- Troubleshooting Windows-specific issues
+- Command Prompt & PowerShell examples
 
 ## 📝 License
 

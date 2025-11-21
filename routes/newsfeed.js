@@ -13,15 +13,18 @@ const { timeAgo, getRoleBadge } = require('../utils/helpers');
 // View newsfeed
 router.get('/', isAuthenticated, async (req, res) => {
     try {
+        const userId = req.session.user.id;
+        
         const [posts] = await db.execute(`
-            SELECT p.*, u.name, u.role, pr.profile_picture 
+            SELECT p.*, u.name, u.role, pr.profile_picture,
+                   EXISTS(SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = ?) as user_liked
             FROM posts p
             JOIN users u ON p.user_id = u.id
             LEFT JOIN profiles pr ON u.id = pr.user_id
             WHERE p.is_approved = 1
             ORDER BY p.created_at DESC
             LIMIT 50
-        `);
+        `, [userId]);
 
         res.render('newsfeed/index', {
             pageTitle: 'Newsfeed',

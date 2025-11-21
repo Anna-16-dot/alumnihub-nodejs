@@ -12,7 +12,8 @@ const { isGuest } = require('../middleware/auth');
 // Login page
 router.get('/login', isGuest, (req, res) => {
     res.render('auth/login', {
-        pageTitle: 'Login'
+        pageTitle: 'Login',
+        layout: false
     });
 });
 
@@ -76,7 +77,8 @@ router.post('/login', isGuest, [
 // Register page
 router.get('/register', isGuest, (req, res) => {
     res.render('auth/register', {
-        pageTitle: 'Register'
+        pageTitle: 'Register',
+        layout: false
     });
 });
 
@@ -144,7 +146,8 @@ router.post('/register', isGuest, [
 // Forgot password page
 router.get('/forgot-password', isGuest, (req, res) => {
     res.render('auth/forgot-password', {
-        pageTitle: 'Forgot Password'
+        pageTitle: 'Forgot Password',
+        layout: false
     });
 });
 

@@ -29,15 +29,17 @@ router.get('/', isAuthenticated, async (req, res) => {
         );
 
         // Get recent posts
+        const userId = req.session.user.id;
         const [recentPosts] = await db.execute(`
-            SELECT p.*, u.name, u.role, pr.profile_picture 
+            SELECT p.*, u.name, u.role, pr.profile_picture,
+                   EXISTS(SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = ?) as user_liked
             FROM posts p
             JOIN users u ON p.user_id = u.id
             LEFT JOIN profiles pr ON u.id = pr.user_id
             WHERE p.is_approved = 1
             ORDER BY p.created_at DESC
             LIMIT 5
-        `);
+        `, [userId]);
 
         res.render('dashboard/index', {
             pageTitle: 'Dashboard',

@@ -19,12 +19,20 @@ npm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+ehthumbs.db
+ehthumbs_vista.db
+*.lnk
+*~
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-workspace
+*.sublime-project
 
 # Build
 dist/

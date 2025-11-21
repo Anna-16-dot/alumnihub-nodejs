@@ -12,9 +12,17 @@ const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
 const path = require('path');
+const expressLayouts = require('express-ejs-layouts');
 
 // Initialize Express app
 const app = express();
+
+/* ⭐⭐⭐ IMPORTANT: REQUIRED FOR RENDER ⭐⭐⭐
+   Render handles HTTPS through a proxy.
+   Without this, secure cookies DO NOT work!
+   Which caused login to fail every time.
+*/
+app.set('trust proxy', 1);
 
 // Import database connection
 const db = require('./config/database');
@@ -31,13 +39,14 @@ app.use(cookieParser());
 
 // Session Configuration
 app.use(session({
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || "default_secret_key",
     resave: false,
     saveUninitialized: false,
     cookie: {
-        maxAge: parseInt(process.env.SESSION_MAX_AGE),
+        maxAge: parseInt(process.env.SESSION_MAX_AGE) || 24 * 60 * 60 * 1000, // 1 day
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production'
+        secure: process.env.NODE_ENV === 'production',   // HTTPS required
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' // Required for cross-site cookies
     }
 }));
 
@@ -58,6 +67,8 @@ app.use((req, res, next) => {
 });
 
 // View Engine Setup
+app.use(expressLayouts);
+app.set('layout', 'layout');
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
@@ -73,13 +84,15 @@ app.use('/profile', require('./routes/profile'));
 app.use('/directory', require('./routes/directory'));
 app.use('/newsfeed', require('./routes/newsfeed'));
 app.use('/jobs', require('./routes/jobs'));
+app.use('/chat', require('./routes/chat'));
 app.use('/admin', require('./routes/admin'));
 app.use('/api', require('./routes/api'));
 
 // 404 Error Handler
 app.use((req, res) => {
     res.status(404).render('errors/404', {
-        pageTitle: 'Page Not Found'
+        pageTitle: 'Page Not Found',
+        layout: false
     });
 });
 
@@ -88,7 +101,8 @@ app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(err.status || 500).render('errors/500', {
         pageTitle: 'Server Error',
-        error: process.env.NODE_ENV === 'development' ? err : {}
+        error: process.env.NODE_ENV === 'development' ? err : {},
+        layout: false
     });
 });
 

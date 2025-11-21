@@ -1,6 +1,3 @@
-<%- include('../partials/navbar') %>
-<div class="content-wrapper">
-<%- include('../partials/flash') %>
 <div class="container-fluid p-3">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="mb-0"><i class="bi bi-newspaper me-2"></i>Newsfeed</h5>
@@ -36,11 +33,28 @@
                 <% } %>
             </div>
             <div class="post-footer">
-                <button class="btn btn-sm btn-light like-btn" onclick="likePost(<%= post.id %>)">
-                    <i class="bi bi-heart"></i> <span class="like-count"><%= post.likes_count %></span>
+                <button class="btn btn-sm btn-light like-btn <%= post.user_liked ? 'liked' : '' %>" onclick="likePost(<%= post.id %>)" data-post-id="<%= post.id %>">
+                    <i class="bi <%= post.user_liked ? 'bi-heart-fill text-danger' : 'bi-heart' %>"></i> 
+                    <span class="like-count"><%= post.likes_count %></span>
                 </button>
-                <button class="btn btn-sm btn-light"><i class="bi bi-chat"></i> Comment</button>
-                <button class="btn btn-sm btn-light"><i class="bi bi-share"></i> Share</button>
+                <button class="btn btn-sm btn-light" onclick="toggleCommentBox(<%= post.id %>)">
+                    <i class="bi bi-chat-dots"></i> Comment
+                </button>
+                <button class="btn btn-sm btn-light" onclick="sharePost(<%= post.id %>)">
+                    <i class="bi bi-share"></i> Share
+                </button>
+            </div>
+            <!-- Comments Section -->
+            <div class="comments-section" id="commentsSection<%= post.id %>" style="display: none;">
+                <div class="comments-list" id="commentsList<%= post.id %>">
+                    <!-- Comments will be loaded here -->
+                </div>
+                <div class="comment-box" id="commentBox<%= post.id %>">
+                    <textarea class="form-control mb-2" placeholder="Write a comment..." id="commentText<%= post.id %>" rows="2"></textarea>
+                    <button class="btn btn-primary btn-sm w-100" onclick="addComment(<%= post.id %>)">
+                        <i class="bi bi-send-fill me-1"></i>Post Comment
+                    </button>
+                </div>
             </div>
         </div>
         <% }); %>
@@ -55,6 +69,10 @@
 <%- include('../partials/bottom-nav') %>
 <script>
 function likePost(postId) {
+    const likeBtn = document.querySelector(`.like-btn[data-post-id="${postId}"]`);
+    const likeIcon = likeBtn.querySelector('i');
+    const likeCount = likeBtn.querySelector('.like-count');
+    
     fetch('/api/like-post', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -63,16 +81,148 @@ function likePost(postId) {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            const card = document.querySelector(`[data-post-id="${postId}"]`);
-            const likeCount = card.querySelector('.like-count');
+            // Update count
             likeCount.textContent = data.likes_count;
-            const likeBtn = card.querySelector('.like-btn i');
-            likeBtn.classList.toggle('bi-heart');
-            likeBtn.classList.toggle('bi-heart-fill');
-            likeBtn.classList.toggle('text-danger');
+            
+            // Toggle heart icon and color
+            if (data.liked) {
+                likeIcon.classList.remove('bi-heart');
+                likeIcon.classList.add('bi-heart-fill', 'text-danger');
+                likeBtn.classList.add('liked');
+            } else {
+                likeIcon.classList.remove('bi-heart-fill', 'text-danger');
+                likeIcon.classList.add('bi-heart');
+                likeBtn.classList.remove('liked');
+            }
+            
+            if (typeof loadNotificationCount === 'function') loadNotificationCount();
         }
+    })
+    .catch(error => {
+        console.error('Like error:', error);
     });
 }
-</script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/js/app.js"></script>
+
+function toggleCommentBox(postId) {
+    const commentsSection = document.getElementById(`commentsSection${postId}`);
+    if (commentsSection.style.display === 'none') {
+        commentsSection.style.display = 'block';
+        loadComments(postId);
+    } else {
+        commentsSection.style.display = 'none';
+    }
+}
+
+function loadComments(postId) {
+    fetch(`/api/get-comments/${postId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const commentsList = document.getElementById(`commentsList${postId}`);
+                if (data.comments.length === 0) {
+                    commentsList.innerHTML = '<p class="text-muted small mb-3">No comments yet. Be the first to comment!</p>';
+                } else {
+                    commentsList.innerHTML = data.comments.map(comment => `
+                        <div class="comment-item" id="comment${comment.id}">
+                            <div class="comment-header">
+                                <strong>${comment.name}</strong>
+                                <small class="text-muted">${timeAgo(comment.created_at)}</small>
+                            </div>
+                            <div class="comment-body">${escapeHtml(comment.comment)}</div>
+                            ${canDeleteComment(comment.user_id) ? `
+                                <button class="btn btn-sm btn-link text-danger p-0" onclick="deleteComment(${comment.id}, ${postId})">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            ` : ''}
+                        </div>
+                    `).join('');
+                }
+            }
+        });
+}
+
+function canDeleteComment(commentUserId) {
+    return commentUserId === <%= user.id %> || '<%= user.role %>' === 'admin';
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function timeAgo(timestamp) {
+    const now = new Date();
+    const past = new Date(timestamp);
+    const seconds = Math.floor((now - past) / 1000);
+    
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+    return Math.floor(seconds / 86400) + 'd ago';
+}
+
+function addComment(postId) {
+    const commentText = document.getElementById(`commentText${postId}`).value.trim();
+    if (!commentText) {
+        alert('Please enter a comment');
+        return;
+    }
+
+    fetch('/api/add-comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ post_id: postId, comment: commentText })
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById(`commentText${postId}`).value = '';
+                loadComments(postId);
+                if (typeof loadNotificationCount === 'function') loadNotificationCount();
+            } else {
+                alert(data.message || 'Failed to add comment');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred');
+        });
+}
+
+function deleteComment(commentId, postId) {
+    if (!confirm('Are you sure you want to delete this comment?')) return;
+
+    fetch(`/api/delete-comment/${commentId}`, {
+        method: 'DELETE'
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                loadComments(postId);
+            } else {
+                alert(data.message || 'Failed to delete comment');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred');
+        });
+}
+
+function sharePost(postId) {
+    if (confirm('Share this post?')) {
+        fetch('/api/share-post', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ post_id: postId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('Post shared successfully!');
+                if (typeof loadNotificationCount === 'function') loadNotificationCount();
+            }
+        });
+    }
+}

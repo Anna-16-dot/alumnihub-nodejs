@@ -1,46 +1,180 @@
-<%- include('../partials/navbar') %>
-<div class="content-wrapper">
-<%- include('../partials/flash') %>
 <div class="container-fluid p-3">
-    <h5 class="mb-3"><i class="bi bi-gear-fill me-2"></i>Admin Dashboard</h5>
-    <div class="row g-3 mb-3">
-        <div class="col-6">
-            <div class="stat-card bg-primary">
-                <div class="stat-icon"><i class="bi bi-people"></i></div>
-                <div class="stat-info">
-                    <h3><%= stats.totalUsers %></h3>
-                    <p>Total Users</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-6">
-            <div class="stat-card bg-success">
-                <div class="stat-icon"><i class="bi bi-file-post"></i></div>
-                <div class="stat-info">
-                    <h3><%= stats.totalPosts %></h3>
-                    <p>Total Posts</p>
-                </div>
-            </div>
+    <!-- Admin Header -->
+    <div class="section-header mb-4">
+        <div>
+            <h5 class="mb-0"><i class="bi bi-shield-check me-2 text-danger"></i>Admin Dashboard</h5>
+            <small class="text-muted">Full administrative control & moderation</small>
         </div>
     </div>
+
+    <!-- Admin Statistics -->
+    <div class="row g-3 mb-4">
+        <div class="col-6">
+            <a href="/admin/users" class="text-decoration-none">
+                <div class="stat-card bg-primary">
+                    <div class="stat-icon"><i class="bi bi-people-fill"></i></div>
+                    <div class="stat-info">
+                        <h3><%= stats.totalUsers %></h3>
+                        <p>Total Users</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6">
+            <a href="/admin" class="text-decoration-none">
+                <div class="stat-card bg-success">
+                    <div class="stat-icon"><i class="bi bi-file-post"></i></div>
+                    <div class="stat-info">
+                        <h3><%= stats.totalPosts %></h3>
+                        <p>Total Posts</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6">
+            <a href="/admin" class="text-decoration-none">
+                <div class="stat-card bg-warning">
+                    <div class="stat-icon"><i class="bi bi-clock-history"></i></div>
+                    <div class="stat-info">
+                        <h3><%= stats.pendingPosts %></h3>
+                        <p>Pending Posts</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6">
+            <a href="/jobs" class="text-decoration-none">
+                <div class="stat-card bg-info">
+                    <div class="stat-icon"><i class="bi bi-briefcase-fill"></i></div>
+                    <div class="stat-info">
+                        <h3><%= stats.totalJobs %></h3>
+                        <p>Total Jobs</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Admin Quick Actions -->
+    <div class="section-header mb-3">
+        <h6 class="mb-0"><i class="bi bi-lightning-fill text-warning me-2"></i>Admin Actions</h6>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6">
+            <a href="/admin/users" class="quick-action-card">
+                <i class="bi bi-people-fill"></i>
+                <span>Manage Users</span>
+            </a>
+        </div>
+        <div class="col-6">
+            <a href="/admin" class="quick-action-card">
+                <i class="bi bi-check2-circle"></i>
+                <span>Approve Posts</span>
+            </a>
+        </div>
+        <div class="col-6">
+            <a href="/admin" class="quick-action-card">
+                <i class="bi bi-trash"></i>
+                <span>Delete Content</span>
+            </a>
+        </div>
+        <div class="col-6">
+            <a href="/dashboard" class="quick-action-card">
+                <i class="bi bi-graph-up"></i>
+                <span>View Stats</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Pending Posts Section -->
+    <div class="section-header mb-3">
+        <div>
+            <h6 class="mb-0"><i class="bi bi-hourglass-split me-2 text-warning"></i>Pending Posts for Approval</h6>
+            <small class="text-muted"><%= stats.pendingPosts %> posts awaiting review</small>
+        </div>
+    </div>
+
     <% if (postsAwaitingApproval && postsAwaitingApproval.length > 0) { %>
-    <h6 class="mb-2">Pending Posts</h6>
-    <% postsAwaitingApproval.forEach(post => { %>
-    <div class="card mb-2">
-        <div class="card-body">
-            <strong><%= post.name %></strong>
-            <p class="mb-2"><%= post.content.substring(0, 100) %>...</p>
-            <form method="POST" action="/admin/posts/<%= post.id %>/approve" style="display:inline;">
-                <button type="submit" class="btn btn-sm btn-success">Approve</button>
-            </form>
-            <form method="POST" action="/admin/posts/<%= post.id %>/delete" style="display:inline;">
-                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-            </form>
+        <% postsAwaitingApproval.forEach(post => { %>
+        <div class="card mb-3">
+            <div class="card-header bg-light">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <strong><%= post.name %></strong>
+                        <small class="text-muted d-block"><%= new Date(post.created_at).toLocaleString() %></small>
+                    </div>
+                    <span class="badge bg-warning">Pending</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="mb-3"><%= post.content.substring(0, 200) %><% if (post.content.length > 200) { %>...<% } %></p>
+                <% if (post.image) { %>
+                    <img src="/<%= post.image %>" alt="Post image" class="img-fluid rounded mb-3" style="max-height: 200px;">
+                <% } %>
+                <div class="d-flex gap-2">
+                    <form method="POST" action="/admin/posts/<%= post.id %>/approve" style="flex: 1;">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-check-circle me-1"></i>Approve
+                        </button>
+                    </form>
+                    <form method="POST" action="/admin/posts/<%= post.id %>/delete" style="flex: 1;">
+                        <button type="submit" class="btn btn-danger w-100" onclick="return confirm('Delete this post?')">
+                            <i class="bi bi-trash me-1"></i>Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
+        <% }); %>
+    <% } else { %>
+        <div class="empty-state">
+            <i class="bi bi-check-circle-fill text-success"></i>
+            <p>All posts are approved!</p>
+            <small class="text-muted">No pending posts at this time</small>
+        </div>
+    <% } %>
+
+    <!-- Recent Users Section -->
+    <div class="section-header mt-4 mb-3">
+        <div>
+            <h6 class="mb-0"><i class="bi bi-person-plus me-2 text-info"></i>Recent Users</h6>
+            <small class="text-muted">Latest 10 registrations</small>
+        </div>
+        <a href="/admin/users" class="btn btn-sm btn-outline-primary">View All Users</a>
     </div>
-    <% }); %>
+
+    <% if (recentUsers && recentUsers.length > 0) { %>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Joined</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% recentUsers.forEach(user => { %>
+                    <tr>
+                        <td><strong><%= user.name %></strong></td>
+                        <td><small><%= user.email %></small></td>
+                        <td>
+                            <span class="badge <%= user.role === 'admin' ? 'bg-danger' : user.role === 'alumni' ? 'bg-warning' : 'bg-secondary' %>">
+                                <%= user.role %>
+                            </span>
+                        </td>
+                        <td><small><%= new Date(user.created_at).toLocaleDateString() %></small></td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+    <% } else { %>
+        <div class="empty-state">
+            <i class="bi bi-person"></i>
+            <p>No users found</p>
+        </div>
     <% } %>
 </div>
-</div>
-<%- include('../partials/bottom-nav') %>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

@@ -1,0 +1,45 @@
+<div class="container-fluid p-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0"><i class="bi bi-chat-dots-fill me-2"></i>Messages</h5>
+        <a href="/chat/new" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-circle-fill"></i> New Chat
+        </a>
+    </div>
+
+    <% if (conversations && conversations.length > 0) { %>
+        <div class="chat-list">
+            <% conversations.forEach(conv => { %>
+                <a href="/chat/<%= conv.id %>" class="chat-list-item">
+                    <div class="chat-avatar">
+                        <% if (conv.profile_picture) { %>
+                            <img src="/<%= conv.profile_picture %>" alt="<%= conv.name %>">
+                        <% } else { %>
+                            <div class="avatar-placeholder"><%= conv.name.charAt(0).toUpperCase() %></div>
+                        <% } %>
+                        <% if (conv.unread_count > 0) { %>
+                            <span class="chat-unread-badge"><%= conv.unread_count %></span>
+                        <% } %>
+                    </div>
+                    <div class="chat-info">
+                        <div class="chat-header">
+                            <strong><%= conv.name %></strong>
+                            <small class="text-muted"><%= helpers.timeAgo(conv.last_message_time) %></small>
+                        </div>
+                        <div class="chat-preview <%= conv.unread_count > 0 ? 'unread' : '' %>">
+                            <%= conv.last_message ? (conv.last_message.length > 50 ? conv.last_message.substring(0, 50) + '...' : conv.last_message) : 'Start a conversation' %>
+                        </div>
+                    </div>
+                    <i class="bi bi-chevron-right chat-arrow"></i>
+                </a>
+            <% }); %>
+        </div>
+    <% } else { %>
+        <div class="empty-state">
+            <i class="bi bi-chat-dots"></i>
+            <p>No messages yet</p>
+            <a href="/chat/new" class="btn btn-primary">Start a Conversation</a>
+        </div>
+    <% } %>
+</div>
+</div>
+<%- include('../partials/bottom-nav') %>

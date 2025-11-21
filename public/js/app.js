@@ -159,3 +159,179 @@ const addMaximumScaleToMetaViewport = () => {
 };
 
 addMaximumScaleToMetaViewport();
+
+// ========================================
+// NOTIFICATION SYSTEM
+// ========================================
+
+// Load notification count
+function loadNotificationCount() {
+    fetch('/api/notifications/count')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const badge = document.getElementById('notificationBadge');
+                if (badge) {
+                    if (data.count > 0) {
+                        badge.textContent = data.count > 99 ? '99+' : data.count;
+                        badge.style.display = 'block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            }
+        })
+        .catch(err => console.error('Error loading notification count:', err));
+}
+
+// Load unread message count
+function loadMessageCount() {
+    fetch('/api/messages/unread-count')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const badge = document.getElementById('chatBadge');
+                if (badge) {
+                    if (data.count > 0) {
+                        badge.textContent = data.count > 99 ? '99+' : data.count;
+                        badge.style.display = 'block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            }
+        })
+        .catch(err => console.error('Error loading message count:', err));
+}
+
+// Load notifications
+function loadNotifications() {
+    const notificationList = document.getElementById('notificationList');
+    if (!notificationList) return;
+    
+    notificationList.innerHTML = '<div class="notification-loading"><div class="spinner-border spinner-border-sm text-primary" role="status"></div></div>';
+    
+    fetch('/api/notifications')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.notifications.length > 0) {
+                notificationList.innerHTML = '';
+                data.notifications.forEach(notif => {
+                    const notifEl = createNotificationElement(notif);
+                    notificationList.appendChild(notifEl);
+                });
+            } else {
+                notificationList.innerHTML = '<div class="notification-empty"><i class="bi bi-bell-slash"></i><p>No notifications yet</p></div>';
+            }
+        })
+        .catch(err => {
+            console.error('Error loading notifications:', err);
+            notificationList.innerHTML = '<div class="notification-empty"><p>Error loading notifications</p></div>';
+        });
+}
+
+// Create notification element
+function createNotificationElement(notif) {
+    const div = document.createElement('div');
+    div.className = `notification-item ${notif.is_read ? '' : 'unread'}`;
+    div.onclick = () => markNotificationAsRead(notif.id);
+    
+    const avatar = notif.from_user_picture 
+        ? `<img src="/${notif.from_user_picture}" class="notif-avatar">`
+        : `<div class="notif-avatar-placeholder">${notif.from_user_name.charAt(0).toUpperCase()}</div>`;
+    
+    const icon = notif.type === 'like' ? 'heart-fill text-danger' : 
+                 notif.type === 'comment' ? 'chat-fill text-primary' : 
+                 'share-fill text-success';
+    
+    div.innerHTML = `
+        ${avatar}
+        <div class="notif-content">
+            <div class="notif-message">
+                <i class="bi bi-${icon}"></i>
+                ${notif.message}
+            </div>
+            <div class="notif-time">${timeAgo(notif.created_at)}</div>
+            ${notif.post_content ? `<div class="notif-post-preview">"${notif.post_content.substring(0, 50)}..."</div>` : ''}
+        </div>
+    `;
+    
+    return div;
+}
+
+// Time ago function
+function timeAgo(date) {
+    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + 'y ago';
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + 'mo ago';
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + 'd ago';
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + 'h ago';
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + 'm ago';
+    return 'Just now';
+}
+
+// Toggle notifications dropdown
+function toggleNotifications() {
+    const dropdown = document.getElementById('notificationDropdown');
+    if (dropdown) {
+        const isVisible = dropdown.style.display === 'block';
+        dropdown.style.display = isVisible ? 'none' : 'block';
+        if (!isVisible) {
+            loadNotifications();
+        }
+    }
+}
+
+// Mark notification as read
+function markNotificationAsRead(notificationId) {
+    fetch('/api/mark-notification-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notification_id: notificationId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            loadNotificationCount();
+            loadNotifications();
+        }
+    });
+}
+
+// Mark all as read
+function markAllAsRead() {
+    fetch('/api/mark-all-notifications-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            loadNotificationCount();
+            loadNotifications();
+        }
+    });
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('notificationDropdown');
+    const button = document.querySelector('.notification-btn');
+    if (dropdown && button && !dropdown.contains(e.target) && !button.contains(e.target)) {
+        dropdown.style.display = 'none';
+    }
+});
+
+// Load notification count on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadNotificationCount();
+    loadMessageCount();
+    // Refresh counts every 30 seconds
+    setInterval(loadNotificationCount, 30000);
+    setInterval(loadMessageCount, 30000);
+});

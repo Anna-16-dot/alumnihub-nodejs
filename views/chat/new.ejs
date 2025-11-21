@@ -1,0 +1,57 @@
+<div class="container-fluid p-3">
+    <div class="d-flex align-items-center mb-3">
+        <a href="/chat" class="btn btn-link text-dark p-0 me-3">
+            <i class="bi bi-arrow-left fs-5"></i>
+        </a>
+        <h5 class="mb-0">New Chat</h5>
+    </div>
+
+    <div class="search-box mb-3">
+        <input type="text" class="form-control" id="searchUsers" placeholder="Search users..." onkeyup="filterUsers()">
+    </div>
+
+    <% if (users && users.length > 0) { %>
+        <div class="user-list" id="userList">
+            <% users.forEach(user => { %>
+                <a href="/chat/<%= user.id %>" class="user-list-item" data-name="<%= user.name.toLowerCase() %>">
+                    <div class="user-avatar">
+                        <% if (user.profile_picture) { %>
+                            <img src="/<%= user.profile_picture %>" alt="<%= user.name %>">
+                        <% } else { %>
+                            <div class="avatar-placeholder"><%= user.name.charAt(0).toUpperCase() %></div>
+                        <% } %>
+                    </div>
+                    <div class="user-info">
+                        <strong><%= user.name %></strong>
+                        <small class="text-muted d-block"><%= user.email %></small>
+                        <%- helpers.getRoleBadge(user.role) %>
+                    </div>
+                    <i class="bi bi-chevron-right text-muted"></i>
+                </a>
+            <% }); %>
+        </div>
+    <% } else { %>
+        <div class="empty-state">
+            <i class="bi bi-people"></i>
+            <p>No users found</p>
+        </div>
+    <% } %>
+</div>
+</div>
+<%- include('../partials/bottom-nav') %>
+
+<script>
+function filterUsers() {
+    const searchTerm = document.getElementById('searchUsers').value.toLowerCase();
+    const userItems = document.querySelectorAll('.user-list-item');
+    
+    userItems.forEach(item => {
+        const userName = item.getAttribute('data-name');
+        if (userName.includes(searchTerm)) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+</script>

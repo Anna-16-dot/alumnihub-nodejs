@@ -7,80 +7,163 @@ const router = express.Router();
 const db = require('../config/database');
 const { isAdmin } = require('../middleware/auth');
 
-// Admin dashboard
-router.get('/', isAdmin, async (req, res) => {
-    try {
-        // Get statistics
-        const [totalUsers] = await db.execute('SELECT COUNT(*) as count FROM users');
-        const [totalPosts] = await db.execute('SELECT COUNT(*) as count FROM posts');
-        const [pendingPosts] = await db.execute('SELECT COUNT(*) as count FROM posts WHERE is_approved = 0');
-        const [totalJobs] = await db.execute('SELECT COUNT(*) as count FROM jobs');
+// Admin Dashboard
+router.get('/', isAdmin, (req, res) => {
+    db.query(
+        `SELECT 
+            (SELECT COUNT(*) FROM users) as totalUsers,
+            (SELECT COUNT(*) FROM posts) as totalPosts,
+            (SELECT COUNT(*) FROM posts WHERE is_approved = 0) as pendingPosts,
+            (SELECT COUNT(*) FROM jobs) as totalJobs`,
+        (err, stats) => {
+            if (err) {
+                return res.status(500).render('errors/500', { error: err });
+            }
 
-        // Get recent users
-        const [recentUsers] = await db.execute(`
-            SELECT id, name, email, role, created_at 
-            FROM users 
-            ORDER BY created_at DESC 
-            LIMIT 10
-        `);
+            const statsObj = stats[0];
 
-        // Get pending posts
-        const [postsAwaitingApproval] = await db.execute(`
-            SELECT p.*, u.name 
-            FROM posts p
-            JOIN users u ON p.user_id = u.id
-            WHERE p.is_approved = 0
-            ORDER BY p.created_at DESC
-            LIMIT 10
-        `);
+            db.query(
+                `SELECT * FROM posts WHERE is_approved = 0 ORDER BY created_at DESC LIMIT 10`,
+                (err, posts) => {
+                    if (err) {
+                        return res.status(500).render('errors/500', { error: err });
+                    }
 
-        res.render('admin/dashboard', {
-            pageTitle: 'Admin Dashboard',
-            stats: {
-                totalUsers: totalUsers[0].count,
-                totalPosts: totalPosts[0].count,
-                pendingPosts: pendingPosts[0].count,
-                totalJobs: totalJobs[0].count
-            },
-            recentUsers,
-            postsAwaitingApproval
-        });
+                    db.query(
+                        `SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC LIMIT 10`,
+                        (err, users) => {
+                            if (err) {
+                                return res.status(500).render('errors/500', { error: err });
+                            }
 
-    } catch (error) {
-        console.error('Admin dashboard error:', error);
-        req.flash('error', 'Error loading admin dashboard');
-        res.redirect('/dashboard');
-    }
+                            res.render('admin/dashboard', {
+                                title: 'Admin Dashboard',
+                                stats: statsObj,
+                                postsAwaitingApproval: posts,
+                                recentUsers: users,
+                                user: req.session.user
+                            });
+                        }
+                    );
+                }
+            );
+        }
+    );
 });
 
 // Approve post
-router.post('/posts/:id/approve', isAdmin, async (req, res) => {
+router.post('/posts/:id/approve', isAdmin, (req, res) => {
     const postId = req.params.id;
 
-    try {
-        await db.execute('UPDATE posts SET is_approved = 1 WHERE id = ?', [postId]);
+    db.query('UPDATE posts SET is_approved = 1 WHERE id = ?', [postId], (err) => {
+        if (err) {
+            console.error('Approve post error:', err);
+            req.flash('error', 'Error approving post');
+            return res.redirect('/admin');
+        }
         req.flash('success', 'Post approved successfully');
         res.redirect('/admin');
-    } catch (error) {
-        console.error('Approve post error:', error);
-        req.flash('error', 'Error approving post');
-        res.redirect('/admin');
-    }
+    });
 });
 
 // Delete post
-router.post('/posts/:id/delete', isAdmin, async (req, res) => {
+router.post('/posts/:id/delete', isAdmin, (req, res) => {
     const postId = req.params.id;
 
-    try {
-        await db.execute('DELETE FROM posts WHERE id = ?', [postId]);
+    db.query('DELETE FROM posts WHERE id = ?', [postId], (err) => {
+        if (err) {
+            console.error('Delete post error:', err);
+            req.flash('error', 'Error deleting post');
+            return res.redirect('/admin');
+        }
         req.flash('success', 'Post deleted successfully');
         res.redirect('/admin');
-    } catch (error) {
-        console.error('Delete post error:', error);
-        req.flash('error', 'Error deleting post');
-        res.redirect('/admin');
+    });
+});
+
+// Manage Users
+router.get('/users', isAdmin, (req, res) => {
+    const page = req.query.page || 1;
+    const limit = 10;
+    const offset = (page - 1) * limit;
+
+    db.query(
+        `SELECT id, name, email, role, batch_year, department, created_at, updated_at
+         FROM users
+         ORDER BY created_at DESC
+         LIMIT ? OFFSET ?`,
+        [limit, offset],
+        (err, users) => {
+            if (err) {
+                console.error('Get users error:', err);
+                req.flash('error', 'Error loading users');
+                return res.redirect('/admin');
+            }
+
+            db.query('SELECT COUNT(*) as total FROM users', (err, countResult) => {
+                if (err) {
+                    console.error('Count users error:', err);
+                    req.flash('error', 'Error loading users');
+                    return res.redirect('/admin');
+                }
+
+                const totalUsers = countResult[0].total;
+                const totalPages = Math.ceil(totalUsers / limit);
+
+                res.render('admin/users', {
+                    title: 'Manage Users',
+                    users,
+                    currentPage: parseInt(page),
+                    totalPages,
+                    totalUsers,
+                    user: req.session.user
+                });
+            });
+        }
+    );
+});
+
+// Delete User
+router.post('/users/:id/delete', isAdmin, (req, res) => {
+    const userId = req.params.id;
+
+    // Check if user is trying to delete themselves
+    if (parseInt(userId) === req.session.user.id) {
+        req.flash('error', 'Cannot delete your own account');
+        return res.redirect('/admin/users');
     }
+
+    db.query('DELETE FROM users WHERE id = ?', [userId], (err) => {
+        if (err) {
+            console.error('Delete user error:', err);
+            req.flash('error', 'Error deleting user');
+            return res.redirect('/admin/users');
+        }
+        req.flash('success', 'User deleted successfully');
+        res.redirect('/admin/users');
+    });
+});
+
+// Change User Role
+router.post('/users/:id/role', isAdmin, (req, res) => {
+    const userId = req.params.id;
+    const newRole = req.body.role;
+
+    const validRoles = ['student', 'alumni', 'admin'];
+    if (!validRoles.includes(newRole)) {
+        req.flash('error', 'Invalid role');
+        return res.redirect('/admin/users');
+    }
+
+    db.query('UPDATE users SET role = ? WHERE id = ?', [newRole, userId], (err) => {
+        if (err) {
+            console.error('Update user role error:', err);
+            req.flash('error', 'Error updating user role');
+            return res.redirect('/admin/users');
+        }
+        req.flash('success', 'User role updated successfully');
+        res.redirect('/admin/users');
+    });
 });
 
 module.exports = router;

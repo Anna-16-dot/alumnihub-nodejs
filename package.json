@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "generate-views": "node create-all-views.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -18,23 +19,24 @@
   "author": "VCET Team",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
-    "mysql2": "^3.6.5",
-    "express-session": "^1.17.3",
-    "express-flash": "^0.0.2",
     "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2",
+    "compression": "^1.7.4",
+    "connect-flash": "^0.1.1",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "csurf": "^1.11.0",
     "dotenv": "^16.3.1",
     "ejs": "^3.1.9",
-    "multer": "^1.4.5-lts.1",
+    "express": "^4.18.2",
+    "express-ejs-layouts": "^2.5.1",
+    "express-flash": "^0.0.2",
+    "express-session": "^1.17.3",
     "express-validator": "^7.0.1",
-    "cookie-parser": "^1.4.6",
     "helmet": "^7.1.0",
-    "cors": "^2.8.5",
-    "compression": "^1.7.4",
+    "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
-    "connect-flash": "^0.1.1",
-    "csurf": "^1.11.0"
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.6.5"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

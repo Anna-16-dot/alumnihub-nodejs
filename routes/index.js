@@ -9,7 +9,8 @@ const { isGuest } = require('../middleware/auth');
 // Landing page
 router.get('/', isGuest, (req, res) => {
     res.render('index', {
-        pageTitle: 'Welcome'
+        pageTitle: 'Welcome',
+        layout: false
     });
 });
 
