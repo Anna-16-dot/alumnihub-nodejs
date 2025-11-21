@@ -8,17 +8,16 @@ const pool = mysql.createPool({
     port: process.env.DB_PORT || 3306,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0,
     ssl: {
-        rejectUnauthorized: true
+        rejectUnauthorized: false
     }
 });
 
 pool.getConnection((err, connection) => {
     if (err) {
-        console.error("⚠️ Database Connection Error:", err.message);
+        console.error('⚠️ Database Connection Error:', err.message);
     } else {
-        console.log("✅ Connected to Aiven Cloud MySQL!");
+        console.log('✅ Connected to Aiven Cloud MySQL (Render SSL bypass)!');
         connection.release();
     }
 });
